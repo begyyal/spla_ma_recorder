@@ -128,9 +128,10 @@ public class Recorder implements Closeable {
 
     private void fillChartData(ObservableList<Data<Number, Number>> chartData, ResultTable table) {
 	var newData = IntStream.range(-99, 1)
-	    .filter(i -> table.winRates.get(i + 99) != null)
-	    .mapToObj(i -> this.createDataPoint(i, table.winRates.get(i + 99)))
+	    .filter(i -> table.winRates.get(-i) != null)
+	    .mapToObj(i -> this.createDataPoint(i, table.winRates.next()))
 	    .collect(Collectors.toList());
+	table.winRates.resetFocus();
 	chartData.setAll(newData);
     }
 

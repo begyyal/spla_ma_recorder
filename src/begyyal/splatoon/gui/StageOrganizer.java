@@ -26,8 +26,12 @@ public class StageOrganizer {
 	stage.setTitle("Spla2 MA REC");
 	
 	final var xAxis = new NumberAxis();
-	final var yAxis = new NumberAxis();
 	xAxis.setLabel("How many battle ago (Right end is current)");
+	xAxis.autoRangingProperty().setValue(false);
+	xAxis.setUpperBound(0);
+	xAxis.setLowerBound(-99);
+	
+	final var yAxis = new NumberAxis();
 	yAxis.setLabel("Win rate");
 	yAxis.autoRangingProperty().setValue(false);
 	yAxis.setUpperBound(100);
