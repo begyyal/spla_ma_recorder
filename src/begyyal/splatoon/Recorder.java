@@ -25,10 +25,7 @@ import begyyal.splatoon.object.BattleResult;
 import begyyal.splatoon.object.DisplayDataBundle;
 import begyyal.splatoon.object.ResultTable;
 import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
-import javafx.collections.ListChangeListener;
-import javafx.collections.ListChangeListener.Change;
 import javafx.collections.ObservableList;
 import javafx.scene.chart.XYChart;
 import javafx.scene.chart.XYChart.Data;
@@ -38,14 +35,12 @@ public class Recorder implements Closeable {
     private static final int intervalMin = 5;
 
     private final String sessionId;
-    private final int term;
     private final HttpClient client;
     private final ResultTableDao dao;
     private final ExecutorService exe;
 
     private Recorder() throws IOException {
 	this.sessionId = ResourceBundle.getBundle("common").getString("iksm");
-	this.term = 100;
 	this.client = HttpClient.newHttpClient();
 	this.dao = ResultTableDao.newi();
 	this.exe = Executors.newSingleThreadExecutor(
@@ -139,17 +134,9 @@ public class Recorder implements Closeable {
     private void fillChartData(
 	ObservableList<Data<Number, Number>> chartData,
 	SuperList<Integer> winRates) {
-
-	int dataCount = winRates.size();
-	if (dataCount > this.term) {
-	    dataCount = this.term;
-	    winRates.setFocusIndex(winRates.size() - this.term - 1);
-	}
-
-	var newData = IntStream.range(-dataCount + 1, 1)
+	var newData = IntStream.range(-winRates.size() + 1, 1)
 	    .mapToObj(i -> this.createDataPoint(i, winRates.next()))
 	    .collect(Collectors.toList());
-	winRates.resetFocus();
 	if (chartData.isEmpty())
 	    chartData.setAll(newData);
 	else
