@@ -17,28 +17,31 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import begyyal.commons.util.function.ThreadController;
+import begyyal.commons.util.object.SuperList;
 import begyyal.commons.util.object.SuperList.SuperListGen;
 import begyyal.commons.util.web.constant.HttpHeader;
 import begyyal.splatoon.constant.IkaringApi;
+import begyyal.splatoon.object.BattleResult;
 import begyyal.splatoon.object.ResultTable;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.chart.XYChart;
 import javafx.scene.chart.XYChart.Data;
-import begyyal.splatoon.object.BattleResult;
 
 public class Recorder implements Closeable {
 
     private static final int intervalMin = 5;
 
     private final String sessionId;
+    private final int term;
     private final HttpClient client;
     private final ResultTableDao dao;
     private final ExecutorService exe;
 
     private Recorder() throws IOException {
 	this.sessionId = ResourceBundle.getBundle("common").getString("iksm");
+	this.term = Integer.parseInt(ResourceBundle.getBundle("common").getString("term"));
 	this.client = HttpClient.newHttpClient();
 	this.dao = ResultTableDao.newi();
 	this.exe = Executors.newSingleThreadExecutor(
@@ -118,7 +121,7 @@ public class Recorder implements Closeable {
 	if (!table.integrate(list.reverse()) && !chartData.isEmpty())
 	    return;
 
-	this.fillChartData(chartData, table);
+	this.fillChartData(chartData, table.getWinRates());
 
 	try {
 	    this.dao.write(table);
@@ -129,12 +132,20 @@ public class Recorder implements Closeable {
 	}
     }
 
-    private void fillChartData(ObservableList<Data<Number, Number>> chartData, ResultTable table) {
-	var newData = IntStream.range(-99, 1)
-	    .filter(i -> table.winRates.get(-i) != null)
-	    .mapToObj(i -> this.createDataPoint(i, table.winRates.next()))
+    private void fillChartData(
+	ObservableList<Data<Number, Number>> chartData,
+	SuperList<Integer> winRates) {
+
+	int dataCount = winRates.size();
+	if (dataCount > this.term) {
+	    dataCount = this.term;
+	    winRates.setFocusIndex(winRates.size() - this.term - 1);
+	}
+
+	var newData = IntStream.range(-dataCount + 1, 1)
+	    .mapToObj(i -> this.createDataPoint(i, winRates.next()))
 	    .collect(Collectors.toList());
-	table.winRates.resetFocus();
+	winRates.resetFocus();
 	if (chartData.isEmpty())
 	    chartData.setAll(newData);
 	else
