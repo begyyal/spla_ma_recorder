@@ -32,12 +32,12 @@ public class StageOrganizer {
 	xAxis.setLowerBound(-99);
 	
 	final var yAxis = new NumberAxis();
-	yAxis.setLabel("Win rate");
+	yAxis.setLabel("Win rate (%)");
 	yAxis.autoRangingProperty().setValue(false);
 	yAxis.setUpperBound(100);
 	
 	final var lineChart = new LineChart<Number, Number>(xAxis, yAxis);
-	lineChart.setTitle("Splatoon2 win rates transition");
+	lineChart.setTitle("Splatoon2 win rates transition (gachi only)");
 	
 	var series = new XYChart.Series<Number, Number>();
 	series.setName("Win rates");

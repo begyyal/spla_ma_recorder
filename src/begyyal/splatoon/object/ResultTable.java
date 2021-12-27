@@ -73,6 +73,8 @@ public class ResultTable {
 
     // 更新があればtrue
     public boolean integrate(SuperList<BattleResult> results) {
+	if (results.isEmpty())
+	    return false;
 	var startIndexOfNewRange = results.indexOf(r -> r.id == this.latestId) + 1;
 	if (startIndexOfNewRange == 0)
 	    this.merge(results);

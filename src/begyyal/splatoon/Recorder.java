@@ -107,11 +107,13 @@ public class Recorder implements Closeable {
 	var list = SuperListGen.<BattleResult>newi();
 
 	// 勝率も取れるが、複数断面まとめて更新した際の補完は結局するので、単純化を意図してスルー
-	tree.get("results").forEach(jn -> {
+	for (JsonNode jn : tree.get("results")) {
+	    if (!"gachi".equals(jn.get("type").asText()))
+		continue;
 	    var battleNum = jn.get("battle_number").asInt();
 	    var isWin = "victory".equals(jn.get("my_team_result").get("key").asText());
 	    list.add(new BattleResult(battleNum, isWin));
-	});
+	}
 
 	if (!table.integrate(list.reverse()) && !chartData.isEmpty())
 	    return;
