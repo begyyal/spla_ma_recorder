@@ -95,7 +95,6 @@ public class Recorder implements Closeable {
 	    return;
 	}
 
-	// 勝率も取れるが、複数断面まとめて更新した際の補完は結局するので、単純化を意図してスルー
 	JsonNode tree = null;
 	try {
 	    tree = new ObjectMapper().readTree(json);
@@ -106,6 +105,7 @@ public class Recorder implements Closeable {
 	}
 	var list = SuperListGen.<BattleResult>newi();
 
+	// 勝率も取れるが、複数断面まとめて更新した際の補完は結局するので、単純化を意図してスルー
 	tree.get("results").forEach(jn -> {
 	    var battleNum = jn.get("battle_number").asInt();
 	    var isWin = "victory".equals(jn.get("my_team_result").get("key").asText());
