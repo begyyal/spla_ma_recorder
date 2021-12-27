@@ -20,6 +20,7 @@ import begyyal.commons.util.function.ThreadController;
 import begyyal.commons.util.object.SuperList;
 import begyyal.commons.util.object.SuperList.SuperListGen;
 import begyyal.commons.util.web.constant.HttpHeader;
+import begyyal.commons.util.web.constant.HttpStatus;
 import begyyal.splatoon.constant.IkaringApi;
 import begyyal.splatoon.object.BattleResult;
 import begyyal.splatoon.object.DisplayDataBundle;
@@ -51,12 +52,21 @@ public class Recorder implements Closeable {
 	return new Recorder();
     }
 
-    public DisplayDataBundle run() throws IOException, InterruptedException {
+    public DisplayDataBundle run() throws Exception {
 
 	var chartData = FXCollections.<Data<Number, Number>>observableArrayList();
 
 	var request = this.createReq();
 	var res = client.send(request, BodyHandlers.ofString());
+	var status = HttpStatus.parse(res.statusCode());
+	if (status.getCategory() != 2)
+	    if (status == HttpStatus.Unauthorized) {
+		throw new Exception(
+		    "Http response by the ikaring API shows unauthorized(401) status, "
+			    + "so iksm_session may be wrong.");
+	    } else
+		throw new Exception("Http status by the ikaring API is not success.");
+	
 	this.record(res.body(), chartData);
 
 	this.exe.execute(() -> {

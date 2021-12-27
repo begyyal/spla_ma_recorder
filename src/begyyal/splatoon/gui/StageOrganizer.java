@@ -23,25 +23,28 @@ public class StageOrganizer {
     private final int windowHeight;
     private final int windowWidth;
 
-    private StageOrganizer(DisplayDataBundle dataBundle) {
-
-	var term = Arrays.stream(
-	    ResourceBundle.getBundle("common").getString("term").split(Strs.comma))
-	    .map(Integer::parseInt)
-	    .toArray(Integer[]::new);
-	Arrays.sort(term);
+    private StageOrganizer(
+	Integer[] term,
+	int windowHeight,
+	int windowWidth,
+	DisplayDataBundle dataBundle) {
 	this.term = term;
-
-	this.windowHeight = Integer.parseInt(
-	    ResourceBundle.getBundle("common").getString("windowHeight"));
-	this.windowWidth = Integer.parseInt(
-	    ResourceBundle.getBundle("common").getString("windowWidth"));
-
+	this.windowHeight = windowHeight;
+	this.windowWidth = windowWidth;
 	this.dataBundle = dataBundle;
     }
 
     public static StageOrganizer newi(DisplayDataBundle dataBundle) {
-	return new StageOrganizer(dataBundle);
+
+	var res = ResourceBundle.getBundle("common");
+	var term = Arrays.stream(res.getString("term").split(Strs.comma))
+	    .map(Integer::parseInt)
+	    .toArray(Integer[]::new);
+	Arrays.sort(term);
+	var windowHeight = Integer.parseInt(res.getString("windowHeight"));
+	var windowWidth = Integer.parseInt(res.getString("windowWidth"));
+
+	return new StageOrganizer(term, windowHeight, windowWidth, dataBundle);
     }
 
     public void process(Stage stage) {
