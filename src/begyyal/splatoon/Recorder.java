@@ -58,7 +58,7 @@ public class Recorder implements Closeable {
 	
 	this.exe.execute(() -> {
 	    while (true) {
-		if (!ThreadController.sleep(1000 * 60 * 60l))
+		if (!ThreadController.sleep(1000 * 59l))
 		    break;
 		var cal = Calendar.getInstance();
 		if (cal.get(Calendar.MINUTE) % intervalMin == 0)
