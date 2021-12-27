@@ -21,6 +21,7 @@ import begyyal.commons.util.object.SuperList.SuperListGen;
 import begyyal.commons.util.web.constant.HttpHeader;
 import begyyal.splatoon.constant.IkaringApi;
 import begyyal.splatoon.object.ResultTable;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.chart.XYChart;
@@ -55,7 +56,7 @@ public class Recorder implements Closeable {
 	var request = this.createReq();
 	var res = client.send(request, BodyHandlers.ofString());
 	this.record(res.body(), chartData);
-	
+
 	this.exe.execute(() -> {
 	    while (true) {
 		if (!ThreadController.sleep(1000 * 59l))
@@ -65,7 +66,7 @@ public class Recorder implements Closeable {
 		    this.process(chartData);
 	    }
 	});
-	
+
 	return chartData;
     }
 
@@ -132,7 +133,10 @@ public class Recorder implements Closeable {
 	    .mapToObj(i -> this.createDataPoint(i, table.winRates.next()))
 	    .collect(Collectors.toList());
 	table.winRates.resetFocus();
-	chartData.setAll(newData);
+	if (chartData.isEmpty())
+	    chartData.setAll(newData);
+	else
+	    Platform.runLater(() -> chartData.setAll(newData));
     }
 
     private Data<Number, Number> createDataPoint(int x, int y) {
