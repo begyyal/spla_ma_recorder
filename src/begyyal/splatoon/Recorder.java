@@ -22,9 +22,13 @@ import begyyal.commons.util.object.SuperList.SuperListGen;
 import begyyal.commons.util.web.constant.HttpHeader;
 import begyyal.splatoon.constant.IkaringApi;
 import begyyal.splatoon.object.BattleResult;
+import begyyal.splatoon.object.DisplayDataBundle;
 import begyyal.splatoon.object.ResultTable;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
+import javafx.collections.ListChangeListener.Change;
 import javafx.collections.ObservableList;
 import javafx.scene.chart.XYChart;
 import javafx.scene.chart.XYChart.Data;
@@ -41,7 +45,7 @@ public class Recorder implements Closeable {
 
     private Recorder() throws IOException {
 	this.sessionId = ResourceBundle.getBundle("common").getString("iksm");
-	this.term = Integer.parseInt(ResourceBundle.getBundle("common").getString("term"));
+	this.term = 100;
 	this.client = HttpClient.newHttpClient();
 	this.dao = ResultTableDao.newi();
 	this.exe = Executors.newSingleThreadExecutor(
@@ -52,7 +56,7 @@ public class Recorder implements Closeable {
 	return new Recorder();
     }
 
-    public ObservableList<Data<Number, Number>> run() throws IOException, InterruptedException {
+    public DisplayDataBundle run() throws IOException, InterruptedException {
 
 	var chartData = FXCollections.<Data<Number, Number>>observableArrayList();
 
@@ -70,7 +74,7 @@ public class Recorder implements Closeable {
 	    }
 	});
 
-	return chartData;
+	return new DisplayDataBundle(chartData);
     }
 
     private void process(ObservableList<Data<Number, Number>> chartData) {

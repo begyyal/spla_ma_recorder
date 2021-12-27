@@ -1,54 +1,95 @@
 package begyyal.splatoon.gui;
 
-import javafx.collections.ObservableList;
+import java.util.Arrays;
+import java.util.ResourceBundle;
+
+import begyyal.commons.constant.Strs;
+import begyyal.splatoon.object.DisplayDataBundle;
+import javafx.collections.FXCollections;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
-import javafx.scene.chart.XYChart.Data;
-import javafx.scene.layout.StackPane;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 
 public class StageOrganizer {
 
-    private final ObservableList<Data<Number, Number>> data;
+    private final DisplayDataBundle dataBundle;
+    private final Integer[] term;
+    private final int windowHeight;
+    private final int windowWidth;
 
-    private StageOrganizer(ObservableList<Data<Number, Number>> data) {
-	this.data = data;
+    private StageOrganizer(DisplayDataBundle dataBundle) {
+
+	var term = Arrays.stream(
+	    ResourceBundle.getBundle("common").getString("term").split(Strs.comma))
+	    .map(Integer::parseInt)
+	    .toArray(Integer[]::new);
+	Arrays.sort(term);
+	this.term = term;
+
+	this.windowHeight = Integer.parseInt(
+	    ResourceBundle.getBundle("common").getString("windowHeight"));
+	this.windowWidth = Integer.parseInt(
+	    ResourceBundle.getBundle("common").getString("windowWidth"));
+
+	this.dataBundle = dataBundle;
     }
 
-    public static StageOrganizer newi(ObservableList<Data<Number, Number>> data) {
-	return new StageOrganizer(data);
+    public static StageOrganizer newi(DisplayDataBundle dataBundle) {
+	return new StageOrganizer(dataBundle);
     }
 
     public void process(Stage stage) {
-	
+
 	stage.setTitle("Spla2 MA REC");
-	
+
 	final var xAxis = new NumberAxis();
 	xAxis.setLabel("How many battle ago (Right end is current)");
 	xAxis.autoRangingProperty().setValue(false);
 	xAxis.setUpperBound(0);
-	xAxis.setLowerBound(-99);
-	
+
 	final var yAxis = new NumberAxis();
 	yAxis.setLabel("Win rate (%)");
 	yAxis.autoRangingProperty().setValue(false);
 	yAxis.setUpperBound(100);
-	
+
 	final var lineChart = new LineChart<Number, Number>(xAxis, yAxis);
 	lineChart.setTitle("Splatoon2 win rates transition (gachi only)");
-	
+	lineChart.setPrefSize(this.windowWidth, this.windowHeight - 50);
+
 	var series = new XYChart.Series<Number, Number>();
 	series.setName("Win rates");
-	series.setData(this.data);
+	series.setData(this.dataBundle.data);
 	lineChart.getData().add(series);
 
-	StackPane root = new StackPane();
-	root.getChildren().add(lineChart);
-	
-	Scene scene = new Scene(root, 1000, 700);
+	var options = FXCollections.observableArrayList(this.term);
+	final var comboBox = new ComboBox<Integer>(options);
+	comboBox.valueProperty().addListener(
+	    (obs, o, n) -> xAxis.setLowerBound(-n + 1));
+	comboBox.setValue(this.term[0]);
+
+	var pane = organizePane(lineChart, comboBox);
+	Scene scene = new Scene(pane, this.windowWidth, this.windowHeight);
 	stage.setScene(scene);
 	stage.show();
+    }
+
+    private GridPane organizePane(LineChart<Number, Number> chart, ComboBox<Integer> combo) {
+
+	var grid = new GridPane();
+	grid.setVgap(10);
+	grid.setHgap(10);
+	grid.setPadding(new Insets(10, 10, 10, 10));
+
+	grid.add(new Label("Term : "), 1, 0, 1, 1);
+	grid.add(combo, 2, 0, 2, 1);
+	grid.add(chart, 0, 1, 10, 6);
+
+	return grid;
     }
 }
