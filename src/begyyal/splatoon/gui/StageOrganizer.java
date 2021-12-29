@@ -56,7 +56,7 @@ public class StageOrganizer {
 	stage.setTitle("Spla2 MA REC");
 
 	final var xAxis = new NumberAxis();
-	xAxis.setLabel("How many battle ago (Right end is current)");
+	xAxis.setLabel("How many battles ago (Right end is current)");
 	xAxis.autoRangingProperty().setValue(false);
 	xAxis.setUpperBound(0);
 
