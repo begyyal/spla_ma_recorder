@@ -3,7 +3,11 @@ package begyyal.splatoon.gui;
 import java.util.Arrays;
 import java.util.ResourceBundle;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import begyyal.commons.constant.Strs;
+import begyyal.commons.util.object.SuperMap.SuperMapGen;
+import begyyal.splatoon.constant.DispGameType;
 import begyyal.splatoon.object.DisplayDataBundle;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
@@ -62,35 +66,53 @@ public class StageOrganizer {
 	yAxis.setUpperBound(100);
 
 	final var lineChart = new LineChart<Number, Number>(xAxis, yAxis);
-	lineChart.setTitle("Splatoon2 win rates transition (gachi only)");
+	lineChart.setTitle("Splatoon2 win rates transition");
 	lineChart.setPrefSize(this.windowWidth, this.windowHeight - 50);
 
-	var series = new XYChart.Series<Number, Number>();
-	series.setName("Win rates");
-	series.setData(this.dataBundle.data);
-	lineChart.getData().add(series);
+	var seriesMap = Arrays.stream(DispGameType.values()).map(dt -> {
+	    var series = new XYChart.Series<Number, Number>();
+	    series.setName("Win rates / " + dt.name());
+	    series.setData(this.dataBundle.extractData(dt));
+	    return Pair.of(dt, series);
+	}).collect(SuperMapGen.collect(p -> p.getLeft(), p -> p.getValue()));
 
-	var options = FXCollections.observableArrayList(this.term);
-	final var comboBox = new ComboBox<Integer>(options);
-	comboBox.valueProperty().addListener(
+	var typeOpt = FXCollections.observableArrayList(DispGameType.values());
+	final var typeCombo = new ComboBox<DispGameType>(typeOpt);
+	typeCombo.valueProperty().addListener(
+	    (obs, o, n) -> {
+		lineChart.getData().clear();
+		lineChart.getData().add(seriesMap.get(n));
+	    });
+	typeCombo.setValue(DispGameType.GACHI);
+
+	var termOpt = FXCollections.observableArrayList(this.term);
+	final var termCombo = new ComboBox<Integer>(termOpt);
+	termCombo.valueProperty().addListener(
 	    (obs, o, n) -> xAxis.setLowerBound(-n + 1));
-	comboBox.setValue(this.term[0]);
+	termCombo.setValue(this.term[0]);
 
-	var pane = organizePane(lineChart, comboBox);
+	var pane = organizePane(lineChart, typeCombo, termCombo);
 	Scene scene = new Scene(pane, this.windowWidth, this.windowHeight);
 	stage.setScene(scene);
 	stage.show();
     }
 
-    private GridPane organizePane(LineChart<Number, Number> chart, ComboBox<Integer> combo) {
+    private GridPane organizePane(
+	LineChart<Number, Number> chart,
+	ComboBox<DispGameType> typeCombo,
+	ComboBox<Integer> termCombo) {
 
 	var grid = new GridPane();
 	grid.setVgap(10);
 	grid.setHgap(10);
 	grid.setPadding(new Insets(10, 10, 10, 10));
 
-	grid.add(new Label("Term : "), 1, 0, 1, 1);
-	grid.add(combo, 2, 0, 2, 1);
+	grid.add(new Label("Type : "), 1, 0, 1, 1);
+	grid.add(typeCombo, 2, 0, 2, 1);
+
+	grid.add(new Label("Term : "), 5, 0, 1, 1);
+	grid.add(termCombo, 6, 0, 2, 1);
+
 	grid.add(chart, 0, 1, 10, 6);
 
 	return grid;

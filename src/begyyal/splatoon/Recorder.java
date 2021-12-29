@@ -21,12 +21,12 @@ import begyyal.commons.util.object.SuperList;
 import begyyal.commons.util.object.SuperList.SuperListGen;
 import begyyal.commons.util.web.constant.HttpHeader;
 import begyyal.commons.util.web.constant.HttpStatus;
+import begyyal.splatoon.constant.GameType;
 import begyyal.splatoon.constant.IkaringApi;
 import begyyal.splatoon.object.BattleResult;
 import begyyal.splatoon.object.DisplayDataBundle;
 import begyyal.splatoon.object.ResultTable;
 import javafx.application.Platform;
-import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.chart.XYChart;
 import javafx.scene.chart.XYChart.Data;
@@ -54,8 +54,6 @@ public class Recorder implements Closeable {
 
     public DisplayDataBundle run() throws Exception {
 
-	var chartData = FXCollections.<Data<Number, Number>>observableArrayList();
-
 	var request = this.createReq();
 	var res = client.send(request, BodyHandlers.ofString());
 	var status = HttpStatus.parse(res.statusCode());
@@ -66,8 +64,9 @@ public class Recorder implements Closeable {
 			    + "so iksm_session may be wrong.");
 	    } else
 		throw new Exception("Http status by the ikaring API is not success.");
-	
-	this.record(res.body(), chartData);
+
+	var dataBundle = new DisplayDataBundle();
+	this.record(res.body(), dataBundle);
 
 	this.exe.execute(() -> {
 	    while (true) {
@@ -75,18 +74,18 @@ public class Recorder implements Closeable {
 		    break;
 		var cal = Calendar.getInstance();
 		if (cal.get(Calendar.MINUTE) % intervalMin == 0)
-		    this.process(chartData);
+		    this.process(dataBundle);
 	    }
 	});
 
-	return new DisplayDataBundle(chartData);
+	return dataBundle;
     }
 
-    private void process(ObservableList<Data<Number, Number>> chartData) {
+    private void process(DisplayDataBundle dataBundle) {
 	var request = this.createReq();
 	client.sendAsync(request, BodyHandlers.ofString())
 	    .thenApply(HttpResponse::body)
-	    .thenAccept(j -> this.record(j, chartData))
+	    .thenAccept(j -> this.record(j, dataBundle))
 	    .join();
     }
 
@@ -97,7 +96,7 @@ public class Recorder implements Closeable {
 	    .build();
     }
 
-    private void record(String json, ObservableList<Data<Number, Number>> chartData) {
+    private void record(String json, DisplayDataBundle dataBundle) {
 
 	ResultTable table = null;
 	try {
@@ -119,17 +118,20 @@ public class Recorder implements Closeable {
 	var list = SuperListGen.<BattleResult>newi();
 
 	for (JsonNode jn : tree.get("results")) {
-	    if (!"gachi".equals(jn.get("type").asText()))
+	    var type = GameType.parse(jn.get("type").asText());
+	    if (type == null)
 		continue;
 	    var battleNum = jn.get("battle_number").asInt();
 	    var isWin = "victory".equals(jn.get("my_team_result").get("key").asText());
-	    list.add(new BattleResult(battleNum, isWin));
+	    list.add(new BattleResult(battleNum, isWin, type));
 	}
 
-	if (!table.integrate(list.reverse()) && !chartData.isEmpty())
+	if (!table.integrate(list.reverse()) && !dataBundle.data.isEmpty())
 	    return;
 
-	this.fillChartData(chartData, table.getWinRates());
+	for (var t : GameType.values())
+	    this.fillChartData(dataBundle.getDataByType(t), table.getWinRates(t));
+	this.fillChartData(dataBundle.data, table.getTotalWinRates());
 
 	try {
 	    this.dao.write(table);
