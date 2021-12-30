@@ -1,4 +1,4 @@
-package begyyal.splatoon;
+package begyyal.splatoon.processor;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -23,6 +23,8 @@ import begyyal.commons.util.web.constant.HttpHeader;
 import begyyal.commons.util.web.constant.HttpStatus;
 import begyyal.splatoon.constant.GameType;
 import begyyal.splatoon.constant.IkaringApi;
+import begyyal.splatoon.constant.Rule;
+import begyyal.splatoon.db.ResultTableDao;
 import begyyal.splatoon.object.BattleResult;
 import begyyal.splatoon.object.DisplayDataBundle;
 import begyyal.splatoon.object.ResultTable;
@@ -121,17 +123,22 @@ public class Recorder implements Closeable {
 	    var type = GameType.parse(jn.get("type").asText());
 	    if (type == null)
 		continue;
+	    var rule = Rule.parse(jn.get("rule").get("key").asText());
+	    if (rule == null)
+		continue;
 	    var battleNum = jn.get("battle_number").asInt();
 	    var isWin = "victory".equals(jn.get("my_team_result").get("key").asText());
-	    list.add(new BattleResult(battleNum, isWin, type));
+	    list.add(new BattleResult(battleNum, isWin, type, rule));
 	}
 
-	if (!table.integrate(list.reverse()) && !dataBundle.data.isEmpty())
+	if (!table.integrate(list.reverse()) && !dataBundle.totalData.isEmpty())
 	    return;
 
 	for (var t : GameType.values())
-	    this.fillChartData(dataBundle.getDataByType(t), table.getWinRates(t));
-	this.fillChartData(dataBundle.data, table.getTotalWinRates());
+	    this.fillChartData(dataBundle.dataByType.get(t), table.getWinRates(t));
+	for (var r : Rule.values())
+	    this.fillChartData(dataBundle.dataByRule.get(r), table.getWinRates(r));
+	this.fillChartData(dataBundle.totalData, table.getTotalWinRates());
 
 	try {
 	    this.dao.write(table);

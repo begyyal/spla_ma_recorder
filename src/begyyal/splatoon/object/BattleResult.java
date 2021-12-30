@@ -1,16 +1,23 @@
 package begyyal.splatoon.object;
 
 import begyyal.splatoon.constant.GameType;
+import begyyal.splatoon.constant.Rule;
 
 public class BattleResult {
     public final int id;
     public final boolean isWin;
     public final GameType type;
+    public final Rule rule;
 
-    public BattleResult(int battleNum, boolean isWin, GameType type) {
+    public BattleResult(
+	int battleNum,
+	boolean isWin,
+	GameType type,
+	Rule rule) {
 	this.id = battleNum;
 	this.isWin = isWin;
 	this.type = type;
+	this.rule = rule;
     }
 
     @Override

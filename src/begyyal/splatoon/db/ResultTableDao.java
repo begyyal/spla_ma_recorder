@@ -1,4 +1,4 @@
-package begyyal.splatoon;
+package begyyal.splatoon.db;
 
 import java.io.IOException;
 import java.nio.file.Files;

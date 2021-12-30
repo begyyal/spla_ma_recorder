@@ -1,4 +1,4 @@
-package begyyal.splatoon;
+package begyyal.splatoon.function;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Paths;

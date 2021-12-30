@@ -2,7 +2,9 @@ package begyyal.splatoon;
 
 import java.io.IOException;
 
+import begyyal.splatoon.function.PropValidator;
 import begyyal.splatoon.gui.StageOrganizer;
+import begyyal.splatoon.processor.Recorder;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
