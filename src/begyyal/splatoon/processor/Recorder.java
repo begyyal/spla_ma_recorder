@@ -70,7 +70,7 @@ public class Recorder implements Closeable {
 		throw new Exception("Http status by the ikaring API is not success.");
 
 	var dataBundle = new DisplayDataBundle();
-	this.record2(res.body(), dataBundle);
+	this.record(res.body(), dataBundle);
 
 	this.exe.execute(() -> {
 	    while (true) {
@@ -100,66 +100,6 @@ public class Recorder implements Closeable {
 	    .build();
     }
 
-    private void record2(String json, DisplayDataBundle dataBundle) {
-
-	ResultTable table = null;
-	try {
-	    table = this.dao.read();
-	} catch (IOException e) {
-	    System.out.println("[ERROR] IOException caused when the dao reading.");
-	    e.printStackTrace();
-	    return;
-	}
-
-//	JsonNode tree = null;
-//	try {
-//	    tree = new ObjectMapper().readTree(json);
-//	} catch (IOException e1) {
-//	    System.out.println("[ERROR] IOException caused when reading json.");
-//	    e1.printStackTrace();
-//	    return;
-//	}
-	var list = SuperListGen.<BattleResult>newi();
-
-//	for (JsonNode jn : tree.get("results")) {
-//	    var type = GameType.parse(jn.get("type").asText());
-//	    if (type == null)
-//		continue;
-//	    var rule = Rule.parse(jn.get("rule").get("key").asText());
-//	    if (rule == null)
-//		continue;
-//	    var battleNum = jn.get("battle_number").asInt();
-//	    var isWin = "victory".equals(jn.get("my_team_result").get("key").asText());
-//	    list.add(new BattleResult(battleNum, isWin, type, rule));
-//	}
-
-	if (!table.integrate(list.reverse()) && !dataBundle.totalData.data.isEmpty())
-	    return;
-
-	for (var t : GameType.values())
-	    this.fillPaneData(
-		dataBundle.dataByType.get(t),
-		table.getWinRates(t),
-		table.getTruncationRange(t));
-	for (var r : Rule.values())
-	    this.fillPaneData(
-		dataBundle.dataByRule.get(r),
-		table.getWinRates(r),
-		table.getTruncationRange(r));
-	this.fillPaneData(
-	    dataBundle.totalData,
-	    table.getTotalWinRates(),
-	    table.getTotalTruncationRange());
-
-	try {
-	    this.dao.write(table);
-	} catch (IOException e) {
-	    System.out.println("[ERROR] IOException caused when the dao writing.");
-	    e.printStackTrace();
-	    return;
-	}
-    }
-    
     private void record(String json, DisplayDataBundle dataBundle) {
 
 	ResultTable table = null;
