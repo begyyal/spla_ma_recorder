@@ -132,8 +132,6 @@ public class ResultTable {
 	    .map(p -> p.getLeft())
 	    .filter(r -> resultIsTarget(r, type, rule))
 	    .collect(SuperListGen.collect());
-	if (filtered.size() <= FuncConst.maInterval - FuncConst.ppreCount)
-	    return SuperListGen.empty();
 	return IntStream
 	    .range(filtered.size() - FuncConst.maInterval,
 		filtered.size() - FuncConst.maInterval + FuncConst.ppreCount)

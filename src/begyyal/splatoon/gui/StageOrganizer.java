@@ -1,7 +1,9 @@
 package begyyal.splatoon.gui;
 
 import java.util.Arrays;
+import java.util.Map.Entry;
 import java.util.ResourceBundle;
+import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
 import begyyal.commons.constant.Strs;
@@ -15,6 +17,8 @@ import begyyal.splatoon.gui.constant.PaneState;
 import begyyal.splatoon.object.DisplayDataBundle;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener.Change;
 import javafx.collections.ObservableList;
@@ -42,7 +46,8 @@ public class StageOrganizer {
     private final int windowHeight;
     private final int windowWidth;
 
-    private final ObjectProperty<PaneState> current;
+    private final ObjectProperty<PaneState> currentState;
+    private final StringProperty currentRate;
 
     private StageOrganizer(
 	Integer[] term,
@@ -53,7 +58,8 @@ public class StageOrganizer {
 	this.windowHeight = windowHeight;
 	this.windowWidth = windowWidth;
 	this.dataBundle = dataBundle;
-	this.current = new SimpleObjectProperty<PaneState>();
+	this.currentState = new SimpleObjectProperty<PaneState>();
+	this.currentRate = new SimpleStringProperty();
     }
 
     public static StageOrganizer newi(DisplayDataBundle dataBundle) {
@@ -85,7 +91,10 @@ public class StageOrganizer {
 
 	this.setupPpre(palette);
 	this.setupLineChart(palette);
+	this.setupCurrentRate(palette);
+
 	this.fillPaneData(palette, dataBundle);
+
 	this.addListenersTo(palette);
 	this.setValuesTo(palette);
 
@@ -139,11 +148,16 @@ public class StageOrganizer {
 	palette.chart.setPrefSize(this.windowWidth, this.windowHeight - 50);
     }
 
+    private void setupCurrentRate(ComponentPalette palette) {
+	palette.rateLabel.textProperty().bind(this.currentRate);
+	palette.rateLabel.setStyle("-fx-font-size: 18; -fx-font-weight: bold");
+    }
+
     private void addListenersTo(ComponentPalette palette) {
 
 	palette.typeCombo.valueProperty().addListener(
 	    (obs, o, n) -> {
-		this.current.set(PaneState.parse(n.rule));
+		this.currentState.set(PaneState.parse(n.rule));
 		palette.updateChart(n);
 		palette.updateRuleComboItems(n);
 		palette.updatePpre(n);
@@ -153,7 +167,7 @@ public class StageOrganizer {
 	    (obs, o, n) -> {
 		// 間接的な更新は全てスルー。明示的に値から値へ変えたときのみ
 		if (o != null && n != null && o.type == n.type) {
-		    this.current.set(PaneState.parse(n));
+		    this.currentState.set(PaneState.parse(n));
 		    palette.updateChart(n);
 		    palette.updatePpre(n);
 		}
@@ -162,22 +176,50 @@ public class StageOrganizer {
 	palette.termCombo.valueProperty().addListener(
 	    (obs, o, n) -> palette.xAxis.setLowerBound(-n + 1));
 
-	palette.dispDataMap.entrySet()
-	    .stream()
-	    .forEach(e -> {
-		e.getValue().ppre.addListener((Change<? extends Background> c) -> {
-		    while (c.next()) {
-			if (c.wasReplaced() && e.getKey() == this.current.get())
-			    palette.updatePpre(c.getList());
-		    }
-		});
-	    });
+	palette.dispDataMap.entrySet().stream()
+	    .forEach(e -> this.addListenersToDpd(e.getKey(), e.getValue(), palette));
+
+	this.currentState.addListener(
+	    (obs, o, n) -> this.updateCurrentRate(this.getCurrentDpd(palette).series.getData()));
+    }
+
+    private void addListenersToDpd(PaneState s, DispPaneData dpd, ComponentPalette palette) {
+	dpd.series.getData().addListener((Change<? extends XYChart.Data<Number, Number>> c) -> {
+	    if (changeIsTarget(c, c2 -> c2.wasReplaced(), s))
+		this.updateCurrentRate(c.getList());
+	});
+	dpd.ppre.addListener((Change<? extends Background> c) -> {
+	    if (changeIsTarget(c, c2 -> c2.wasReplaced(), s))
+		palette.updatePpre(c.getList());
+	});
+    }
+
+    private void updateCurrentRate(ObservableList<? extends XYChart.Data<Number, Number>> rates) {
+	if (!rates.isEmpty()) {
+	    int r = (int) rates.get(rates.size() - 1).getYValue();
+	    this.currentRate.set(Integer.toString(r));
+	} else
+	    this.currentRate.set(Strs.empty);
+    }
+
+    private <T> boolean changeIsTarget(Change<T> c, Predicate<Change<T>> cp, PaneState s) {
+	while (c.next())
+	    if (cp.test(c) && s == this.currentState.get())
+		return true;
+	return false;
     }
 
     private void setValuesTo(ComponentPalette palette) {
 	palette.typeCombo.setValue(initType);
 	palette.ruleCombo.setValue(initRule);
 	palette.termCombo.setValue(this.term[0]);
+    }
+
+    private DispPaneData getCurrentDpd(ComponentPalette palette) {
+	return palette.dispDataMap.entrySet().stream()
+	    .filter(e -> e.getKey() == this.currentState.get())
+	    .map(Entry::getValue)
+	    .findFirst().get();
     }
 
     private GridPane organizePane(ComponentPalette palette) {
@@ -199,6 +241,9 @@ public class StageOrganizer {
 	grid.add(new Label("Pararrel Prediction : "), 13, 0, 1, 1);
 	grid.add(palette.ppreGroup, 14, 0, FuncConst.ppreCount, 1);
 
+	grid.add(new Label("Current Rate : "), 27, 0, 1, 1);
+	grid.add(palette.rateLabel, 28, 0, 1, 1);
+
 	grid.add(palette.chart, 0, 1, 30, 6);
 
 	return grid;
@@ -214,6 +259,7 @@ public class StageOrganizer {
 	private final ComboBox<Integer> termCombo;
 	private final SuperMap<PaneState, DispPaneData> dispDataMap;
 	private final Group ppreGroup;
+	private final Label rateLabel;
 
 	private ComponentPalette(
 	    ObservableList<DispGameType> obstype,
@@ -229,6 +275,7 @@ public class StageOrganizer {
 	    this.dispDataMap = Arrays.stream(PaneState.values())
 		.collect(SuperMapGen.collect(dr -> dr, dr -> new DispPaneData()));
 	    this.ppreGroup = new Group();
+	    this.rateLabel = new Label();
 	}
 
 	private void updateChart(DispGameType t) {
