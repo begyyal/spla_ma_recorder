@@ -1,36 +1,24 @@
 package begyyal.splatoon.gui;
 
 import java.util.Arrays;
-import java.util.Map.Entry;
 import java.util.ResourceBundle;
 import java.util.function.Predicate;
-import java.util.stream.IntStream;
 
 import begyyal.commons.constant.Strs;
-import begyyal.commons.util.object.SuperMap;
-import begyyal.commons.util.object.SuperMap.SuperMapGen;
 import begyyal.splatoon.constant.FuncConst;
 import begyyal.splatoon.gui.constant.DispGameType;
 import begyyal.splatoon.gui.constant.DispRule;
-import begyyal.splatoon.gui.constant.GuiParts;
 import begyyal.splatoon.gui.constant.PaneState;
+import begyyal.splatoon.gui.object.ComponentPalette;
+import begyyal.splatoon.gui.object.DispPaneData;
+import begyyal.splatoon.gui.object.DisplayedState;
 import begyyal.splatoon.object.DisplayDataBundle;
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener.Change;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Group;
 import javafx.scene.Scene;
-import javafx.scene.chart.LineChart;
-import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
-import javafx.scene.chart.XYChart.Series;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.GridPane;
@@ -46,8 +34,7 @@ public class StageOrganizer {
     private final int windowHeight;
     private final int windowWidth;
 
-    private final ObjectProperty<PaneState> currentState;
-    private final StringProperty currentRate;
+    private final DisplayedState current;
 
     private StageOrganizer(
 	Integer[] term,
@@ -58,8 +45,7 @@ public class StageOrganizer {
 	this.windowHeight = windowHeight;
 	this.windowWidth = windowWidth;
 	this.dataBundle = dataBundle;
-	this.currentState = new SimpleObjectProperty<PaneState>();
-	this.currentRate = new SimpleStringProperty();
+	this.current = new DisplayedState();
     }
 
     public static StageOrganizer newi(DisplayDataBundle dataBundle) {
@@ -84,19 +70,16 @@ public class StageOrganizer {
 		? FXCollections.<DispRule>observableArrayList()
 		: FXCollections.observableArrayList(DispRule.getBy(initType.type));
 	var termOpt = FXCollections.observableArrayList(term);
-	var palette = new ComponentPalette(
-	    typeOpt,
-	    ruleOpt,
-	    termOpt);
+	var palette = new ComponentPalette(typeOpt, ruleOpt, termOpt);
 
-	this.setupPpre(palette);
-	this.setupLineChart(palette);
-	this.setupCurrentRate(palette);
-
-	this.fillPaneData(palette, dataBundle);
+	var resolver = new SetupResolver(palette, this.windowHeight, this.windowWidth);
+	resolver.setupPaneData(dataBundle);
+	resolver.setupPpre();
+	resolver.setupLineChart();
+	resolver.setupCurrentRate(this.current.rate);
 
 	this.addListenersTo(palette);
-	this.setValuesTo(palette);
+	this.setDefaultValuesTo(palette);
 
 	var pane = organizePane(palette);
 	Scene scene = new Scene(pane, this.windowWidth, this.windowHeight);
@@ -104,60 +87,11 @@ public class StageOrganizer {
 	stage.show();
     }
 
-    private void fillPaneData(ComponentPalette palette, DisplayDataBundle dataBundle) {
-
-	palette.dispDataMap.entrySet().forEach(e -> {
-	    var dr = e.getKey().dr;
-	    if (dr == null) {
-		e.getValue().series.setName("Win rates / " + DispGameType.TOTAL);
-		e.getValue().series.setData(this.dataBundle.totalData.data);
-		e.getValue().ppre = this.dataBundle.totalData.ppre;
-	    } else {
-		e.getValue().series.setName("Win rates / " + dr.type + " / " + dr.label);
-		var pd = this.dataBundle.extractData(dr);
-		e.getValue().series.setData(pd.data);
-		e.getValue().ppre = pd.ppre;
-	    }
-	});
-    }
-
-    private void setupPpre(ComponentPalette palette) {
-	IntStream.range(0, FuncConst.ppreCount).forEach(i -> {
-	    var l = new Label();
-	    l.setText(Integer.toString(i + 1));
-	    l.setBorder(GuiParts.plainBorder);
-	    l.setLayoutX(i * 20);
-	    l.setLayoutY(0);
-	    l.setPrefWidth(15);
-	    l.setAlignment(Pos.CENTER);
-	    palette.ppreGroup.getChildren().add(l);
-	});
-    }
-
-    private void setupLineChart(ComponentPalette palette) {
-
-	palette.xAxis.setLabel("How many battles ago (Right end is current)");
-	palette.xAxis.autoRangingProperty().setValue(false);
-	palette.xAxis.setUpperBound(0);
-
-	palette.yAxis.setLabel("Win rate (%)");
-	palette.yAxis.autoRangingProperty().setValue(false);
-	palette.yAxis.setUpperBound(100);
-
-	palette.chart.setTitle("Splatoon2 win rates transition");
-	palette.chart.setPrefSize(this.windowWidth, this.windowHeight - 50);
-    }
-
-    private void setupCurrentRate(ComponentPalette palette) {
-	palette.rateLabel.textProperty().bind(this.currentRate);
-	palette.rateLabel.setStyle("-fx-font-size: 18; -fx-font-weight: bold");
-    }
-
     private void addListenersTo(ComponentPalette palette) {
 
 	palette.typeCombo.valueProperty().addListener(
 	    (obs, o, n) -> {
-		this.currentState.set(PaneState.parse(n.rule));
+		this.current.state.set(PaneState.parse(n.rule));
 		palette.updateChart(n);
 		palette.updateRuleComboItems(n);
 		palette.updatePpre(n);
@@ -167,7 +101,7 @@ public class StageOrganizer {
 	    (obs, o, n) -> {
 		// 間接的な更新は全てスルー。明示的に値から値へ変えたときのみ
 		if (o != null && n != null && o.type == n.type) {
-		    this.currentState.set(PaneState.parse(n));
+		    this.current.state.set(PaneState.parse(n));
 		    palette.updateChart(n);
 		    palette.updatePpre(n);
 		}
@@ -179,8 +113,9 @@ public class StageOrganizer {
 	palette.dispDataMap.entrySet().stream()
 	    .forEach(e -> this.addListenersToDpd(e.getKey(), e.getValue(), palette));
 
-	this.currentState.addListener(
-	    (obs, o, n) -> this.updateCurrentRate(this.getCurrentDpd(palette).series.getData()));
+	this.current.state.addListener((obs, o, n) -> {
+	    this.updateCurrentRate(palette.getDpd(this.current.state.get()).series.getData());
+	});
     }
 
     private void addListenersToDpd(PaneState s, DispPaneData dpd, ComponentPalette palette) {
@@ -197,29 +132,22 @@ public class StageOrganizer {
     private void updateCurrentRate(ObservableList<? extends XYChart.Data<Number, Number>> rates) {
 	if (!rates.isEmpty()) {
 	    int r = (int) rates.get(rates.size() - 1).getYValue();
-	    this.currentRate.set(Integer.toString(r));
+	    this.current.rate.set(Integer.toString(r));
 	} else
-	    this.currentRate.set(Strs.empty);
+	    this.current.rate.set(Strs.empty);
     }
 
     private <T> boolean changeIsTarget(Change<T> c, Predicate<Change<T>> cp, PaneState s) {
 	while (c.next())
-	    if (cp.test(c) && s == this.currentState.get())
+	    if (cp.test(c) && s == this.current.state.get())
 		return true;
 	return false;
     }
 
-    private void setValuesTo(ComponentPalette palette) {
+    private void setDefaultValuesTo(ComponentPalette palette) {
 	palette.typeCombo.setValue(initType);
 	palette.ruleCombo.setValue(initRule);
 	palette.termCombo.setValue(this.term[0]);
-    }
-
-    private DispPaneData getCurrentDpd(ComponentPalette palette) {
-	return palette.dispDataMap.entrySet().stream()
-	    .filter(e -> e.getKey() == this.currentState.get())
-	    .map(Entry::getValue)
-	    .findFirst().get();
     }
 
     private GridPane organizePane(ComponentPalette palette) {
@@ -247,88 +175,5 @@ public class StageOrganizer {
 	grid.add(palette.chart, 0, 1, 30, 6);
 
 	return grid;
-    }
-
-    private class ComponentPalette {
-
-	private final NumberAxis xAxis;
-	private final NumberAxis yAxis;
-	private final LineChart<Number, Number> chart;
-	private final ComboBox<DispGameType> typeCombo;
-	private final ComboBox<DispRule> ruleCombo;
-	private final ComboBox<Integer> termCombo;
-	private final SuperMap<PaneState, DispPaneData> dispDataMap;
-	private final Group ppreGroup;
-	private final Label rateLabel;
-
-	private ComponentPalette(
-	    ObservableList<DispGameType> obstype,
-	    ObservableList<DispRule> obsrule,
-	    ObservableList<Integer> obsterm) {
-
-	    this.xAxis = new NumberAxis();
-	    this.yAxis = new NumberAxis();
-	    this.chart = new LineChart<Number, Number>(xAxis, yAxis);
-	    this.typeCombo = new ComboBox<DispGameType>(obstype);
-	    this.ruleCombo = new ComboBox<DispRule>(obsrule);
-	    this.termCombo = new ComboBox<Integer>(obsterm);
-	    this.dispDataMap = Arrays.stream(PaneState.values())
-		.collect(SuperMapGen.collect(dr -> dr, dr -> new DispPaneData()));
-	    this.ppreGroup = new Group();
-	    this.rateLabel = new Label();
-	}
-
-	private void updateChart(DispGameType t) {
-	    this.chart.getData().clear();
-	    this.chart.getData().add(this.getDpd(t.rule).series);
-	}
-
-	private void updateChart(DispRule r) {
-	    this.chart.getData().clear();
-	    this.chart.getData().add(this.getDpd(r).series);
-	}
-
-	private void updateRuleComboItems(DispGameType dt) {
-	    if (dt != DispGameType.TOTAL) {
-		this.ruleCombo.setDisable(false);
-		var items = DispRule.getBy(dt.type);
-		this.ruleCombo.getItems().setAll(items);
-		var v = this.ruleCombo.getValue();
-		if (v != null && Arrays.binarySearch(items, v) < 0)
-		    this.ruleCombo.setValue(items[0]);
-	    } else
-		this.ruleCombo.setDisable(true);
-	}
-
-	private void updatePpre(DispGameType t) {
-	    this.updatePpre(this.getDpd(t.rule).ppre);
-	}
-
-	private void updatePpre(DispRule r) {
-	    this.updatePpre(this.getDpd(r).ppre);
-	}
-
-	private void updatePpre(ObservableList<? extends Background> ppre) {
-	    int i = 0;
-	    for (var n : this.ppreGroup.getChildren()) {
-		if (!(n instanceof Label))
-		    continue;
-		var label = (Label) n;
-		label.setBackground(ppre.get(i++));
-	    }
-	}
-
-	private DispPaneData getDpd(DispRule dr) {
-	    return this.dispDataMap.get(PaneState.parse(dr));
-	}
-    }
-
-    private class DispPaneData {
-	private final Series<Number, Number> series;
-	private ObservableList<Background> ppre;
-
-	private DispPaneData() {
-	    this.series = new XYChart.Series<Number, Number>();
-	}
     }
 }
