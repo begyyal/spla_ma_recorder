@@ -41,8 +41,9 @@ public class ResultTable {
 	var isWin = "1".equals(st.nextToken());
 	var type = GameType.parse(Integer.parseInt(st.nextToken()));
 	var rule = Rule.parse(Integer.parseInt(st.nextToken()));
+	int weaponId = Integer.parseInt(st.nextToken());
 	return Pair.of(
-	    new BattleResult(battleNum, isWin, type, rule),
+	    new BattleResult(battleNum, isWin, type, rule, weaponId),
 	    new RateRecord(
 		Integer.parseInt(st.nextToken()),
 		Integer.parseInt(st.nextToken()),
@@ -61,6 +62,7 @@ public class ResultTable {
 		p.getLeft().isWin ? 1 : 0,
 		p.getLeft().type.id,
 		p.getLeft().rule.id,
+		p.getLeft().weaponId,
 		p.getRight().ruleRate,
 		p.getRight().typeRate,
 		p.getRight().totalRate };

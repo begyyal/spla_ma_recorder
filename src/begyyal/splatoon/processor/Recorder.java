@@ -130,7 +130,8 @@ public class Recorder implements Closeable {
 		continue;
 	    var battleNum = jn.get("battle_number").asInt();
 	    var isWin = "victory".equals(jn.get("my_team_result").get("key").asText());
-	    list.add(new BattleResult(battleNum, isWin, type, rule));
+	    int weaponId = jn.get("player_result").get("player").get("weapon").get("id").asInt();
+	    list.add(new BattleResult(battleNum, isWin, type, rule, weaponId));
 	}
 
 	if (!table.integrate(list.reverse()) && !dataBundle.totalData.data.isEmpty())

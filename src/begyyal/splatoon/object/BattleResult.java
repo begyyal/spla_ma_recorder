@@ -8,16 +8,19 @@ public class BattleResult {
     public final boolean isWin;
     public final GameType type;
     public final Rule rule;
+    public final int weaponId;
 
     public BattleResult(
 	int battleNum,
 	boolean isWin,
 	GameType type,
-	Rule rule) {
+	Rule rule,
+	int weaponId) {
 	this.id = battleNum;
 	this.isWin = isWin;
 	this.type = type;
 	this.rule = rule;
+	this.weaponId = weaponId;
     }
 
     @Override
