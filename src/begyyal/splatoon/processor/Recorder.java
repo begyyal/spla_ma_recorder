@@ -6,7 +6,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
-import java.util.Calendar;
 import java.util.ResourceBundle;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -37,15 +36,16 @@ import javafx.scene.layout.Background;
 
 public class Recorder implements Closeable {
 
-    private static final int intervalMin = 5;
-
+    private final int intervalSec;
     private final String sessionId;
     private final HttpClient client;
     private final ResultTableDao dao;
     private final ExecutorService exe;
 
     private Recorder() throws IOException {
-	this.sessionId = ResourceBundle.getBundle("common").getString("iksm");
+	var res = ResourceBundle.getBundle("common");
+	this.intervalSec = Integer.parseInt(res.getString("pollingIntervalSec"));
+	this.sessionId = res.getString("iksm");
 	this.client = HttpClient.newHttpClient();
 	this.dao = ResultTableDao.newi();
 	this.exe = Executors.newSingleThreadExecutor(
@@ -73,13 +73,8 @@ public class Recorder implements Closeable {
 	this.record(res.body(), dataBundle);
 
 	this.exe.execute(() -> {
-	    while (true) {
-		if (!ThreadController.sleep(1000 * 59l))
-		    break;
-		var cal = Calendar.getInstance();
-		if (cal.get(Calendar.MINUTE) % intervalMin == 0)
-		    this.process(dataBundle);
-	    }
+	    while (ThreadController.sleep(1000 * intervalSec))
+		this.process(dataBundle);
 	});
 
 	return dataBundle;

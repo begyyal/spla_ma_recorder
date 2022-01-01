@@ -8,7 +8,6 @@ import java.util.ResourceBundle;
 import java.util.function.Predicate;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 
 import com.google.common.collect.Maps;
 
@@ -18,21 +17,34 @@ public class PropValidator {
 
     private static final Map<String, Predicate<String>> ruleMap = Maps.newHashMap();
     {
-	ruleMap.put("tablePath", v -> {
-	    try {
-		Paths.get(v);
-	    } catch (InvalidPathException e) {
-		return false;
-	    }
-	    return true;
-	});
+	ruleMap.put("tablePath", PropValidator::strIsValidPath);
 	ruleMap.put("term", v -> StringUtils.isNotBlank(v) &&
-		Arrays.stream(v.split(Strs.comma)).allMatch(NumberUtils::isCreatable));
-	ruleMap.put("windowHeight", NumberUtils::isCreatable);
-	ruleMap.put("windowWidth", NumberUtils::isCreatable);
+		Arrays.stream(v.split(Strs.comma)).allMatch(PropValidator::strIsPositiveInt));
+	ruleMap.put("pollingIntervalSec", PropValidator::strIsPositiveInt);
+	ruleMap.put("windowHeight", PropValidator::strIsPositiveInt);
+	ruleMap.put("windowWidth", PropValidator::strIsPositiveInt);
     }
 
     private PropValidator() {
+    }
+
+    private static boolean strIsValidPath(String str) {
+	try {
+	    Paths.get(str);
+	} catch (InvalidPathException e) {
+	    return false;
+	}
+	return true;
+    }
+
+    private static boolean strIsPositiveInt(String str) {
+	int num = 0;
+	try {
+	    num = Integer.parseInt(str);
+	} catch (NumberFormatException | NullPointerException e) {
+	    return false;
+	}
+	return num > 0;
     }
 
     public static boolean exec() {
