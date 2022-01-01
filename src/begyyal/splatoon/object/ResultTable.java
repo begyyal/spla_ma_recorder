@@ -3,15 +3,19 @@ package begyyal.splatoon.object;
 import java.util.List;
 import java.util.StringTokenizer;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+
+import com.google.common.base.Function;
 
 import begyyal.commons.constant.Strs;
 import begyyal.commons.util.object.PairList;
 import begyyal.commons.util.object.PairList.PairListGen;
 import begyyal.commons.util.object.SuperList;
 import begyyal.commons.util.object.SuperList.SuperListGen;
+import begyyal.splatoon.constant.FuncConst;
 import begyyal.splatoon.constant.GameType;
 import begyyal.splatoon.constant.Rule;
 import begyyal.splatoon.processor.RateCalculator;
@@ -86,25 +90,57 @@ public class ResultTable {
     }
 
     public SuperList<Integer> getWinRates(GameType type) {
-	return this.records.stream()
-	    .filter(t -> t.getLeft().type == type)
-	    .map(t -> t.getRight().typeRate)
-	    .filter(r -> r >= 0)
-	    .collect(SuperListGen.collect());
+	return this.getWinRates(type, null, t -> t.typeRate);
     }
 
     public SuperList<Integer> getWinRates(Rule rule) {
+	return this.getWinRates(null, rule, t -> t.ruleRate);
+    }
+
+    public SuperList<Integer> getTotalWinRates() {
+	return this.getWinRates(null, null, t -> t.totalRate);
+    }
+
+    private SuperList<Integer> getWinRates(
+	GameType type,
+	Rule rule,
+	Function<RateRecord, Integer> extractor) {
 	return this.records.stream()
-	    .filter(t -> t.getLeft().rule == rule)
-	    .map(t -> t.getRight().ruleRate)
+	    .filter(t -> resultIsTarget(t.getLeft(), type, rule))
+	    .map(t -> extractor.apply(t.getRight()))
 	    .filter(r -> r >= 0)
 	    .collect(SuperListGen.collect());
     }
 
-    public SuperList<Integer> getTotalWinRates() {
-	return this.records.stream()
-	    .map(t -> t.getRight().totalRate)
-	    .filter(r -> r >= 0)
+    public SuperList<Boolean> getTruncationRange(GameType type) {
+	return this.getTruncationRange(type, null);
+    }
+
+    public SuperList<Boolean> getTruncationRange(Rule rule) {
+	return this.getTruncationRange(null, rule);
+    }
+
+    public SuperList<Boolean> getTotalTruncationRange() {
+	return this.getTruncationRange(null, null);
+    }
+
+    // ppreCountの固定長で返す
+    private SuperList<Boolean> getTruncationRange(GameType type, Rule rule) {
+	var filtered = this.records.stream()
+	    .map(p -> p.getLeft())
+	    .filter(r -> resultIsTarget(r, type, rule))
 	    .collect(SuperListGen.collect());
+	if (filtered.size() <= FuncConst.maInterval - FuncConst.ppreCount)
+	    return SuperListGen.empty();
+	return IntStream
+	    .range(filtered.size() - FuncConst.maInterval,
+		filtered.size() - FuncConst.maInterval + FuncConst.ppreCount)
+	    .mapToObj(i -> i < 0 ? null : filtered.get(i).isWin)
+	    .collect(SuperListGen.collect());
+    }
+
+    private static boolean resultIsTarget(BattleResult r, GameType type, Rule rule) {
+	return type != null ? r.type == type
+		: (rule == null || r.rule == rule);
     }
 }

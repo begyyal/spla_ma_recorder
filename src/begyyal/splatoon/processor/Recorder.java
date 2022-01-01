@@ -25,13 +25,15 @@ import begyyal.splatoon.constant.GameType;
 import begyyal.splatoon.constant.IkaringApi;
 import begyyal.splatoon.constant.Rule;
 import begyyal.splatoon.db.ResultTableDao;
+import begyyal.splatoon.gui.constant.GuiParts;
 import begyyal.splatoon.object.BattleResult;
 import begyyal.splatoon.object.DisplayDataBundle;
+import begyyal.splatoon.object.DisplayDataBundle.PaneData;
 import begyyal.splatoon.object.ResultTable;
 import javafx.application.Platform;
-import javafx.collections.ObservableList;
 import javafx.scene.chart.XYChart;
 import javafx.scene.chart.XYChart.Data;
+import javafx.scene.layout.Background;
 
 public class Recorder implements Closeable {
 
@@ -68,7 +70,7 @@ public class Recorder implements Closeable {
 		throw new Exception("Http status by the ikaring API is not success.");
 
 	var dataBundle = new DisplayDataBundle();
-	this.record(res.body(), dataBundle);
+	this.record2(res.body(), dataBundle);
 
 	this.exe.execute(() -> {
 	    while (true) {
@@ -98,6 +100,66 @@ public class Recorder implements Closeable {
 	    .build();
     }
 
+    private void record2(String json, DisplayDataBundle dataBundle) {
+
+	ResultTable table = null;
+	try {
+	    table = this.dao.read();
+	} catch (IOException e) {
+	    System.out.println("[ERROR] IOException caused when the dao reading.");
+	    e.printStackTrace();
+	    return;
+	}
+
+//	JsonNode tree = null;
+//	try {
+//	    tree = new ObjectMapper().readTree(json);
+//	} catch (IOException e1) {
+//	    System.out.println("[ERROR] IOException caused when reading json.");
+//	    e1.printStackTrace();
+//	    return;
+//	}
+	var list = SuperListGen.<BattleResult>newi();
+
+//	for (JsonNode jn : tree.get("results")) {
+//	    var type = GameType.parse(jn.get("type").asText());
+//	    if (type == null)
+//		continue;
+//	    var rule = Rule.parse(jn.get("rule").get("key").asText());
+//	    if (rule == null)
+//		continue;
+//	    var battleNum = jn.get("battle_number").asInt();
+//	    var isWin = "victory".equals(jn.get("my_team_result").get("key").asText());
+//	    list.add(new BattleResult(battleNum, isWin, type, rule));
+//	}
+
+	if (!table.integrate(list.reverse()) && !dataBundle.totalData.data.isEmpty())
+	    return;
+
+	for (var t : GameType.values())
+	    this.fillPaneData(
+		dataBundle.dataByType.get(t),
+		table.getWinRates(t),
+		table.getTruncationRange(t));
+	for (var r : Rule.values())
+	    this.fillPaneData(
+		dataBundle.dataByRule.get(r),
+		table.getWinRates(r),
+		table.getTruncationRange(r));
+	this.fillPaneData(
+	    dataBundle.totalData,
+	    table.getTotalWinRates(),
+	    table.getTotalTruncationRange());
+
+	try {
+	    this.dao.write(table);
+	} catch (IOException e) {
+	    System.out.println("[ERROR] IOException caused when the dao writing.");
+	    e.printStackTrace();
+	    return;
+	}
+    }
+    
     private void record(String json, DisplayDataBundle dataBundle) {
 
 	ResultTable table = null;
@@ -131,14 +193,23 @@ public class Recorder implements Closeable {
 	    list.add(new BattleResult(battleNum, isWin, type, rule));
 	}
 
-	if (!table.integrate(list.reverse()) && !dataBundle.totalData.isEmpty())
+	if (!table.integrate(list.reverse()) && !dataBundle.totalData.data.isEmpty())
 	    return;
 
 	for (var t : GameType.values())
-	    this.fillChartData(dataBundle.dataByType.get(t), table.getWinRates(t));
+	    this.fillPaneData(
+		dataBundle.dataByType.get(t),
+		table.getWinRates(t),
+		table.getTruncationRange(t));
 	for (var r : Rule.values())
-	    this.fillChartData(dataBundle.dataByRule.get(r), table.getWinRates(r));
-	this.fillChartData(dataBundle.totalData, table.getTotalWinRates());
+	    this.fillPaneData(
+		dataBundle.dataByRule.get(r),
+		table.getWinRates(r),
+		table.getTruncationRange(r));
+	this.fillPaneData(
+	    dataBundle.totalData,
+	    table.getTotalWinRates(),
+	    table.getTotalTruncationRange());
 
 	try {
 	    this.dao.write(table);
@@ -149,20 +220,32 @@ public class Recorder implements Closeable {
 	}
     }
 
-    private void fillChartData(
-	ObservableList<Data<Number, Number>> chartData,
-	SuperList<Integer> winRates) {
+    private void fillPaneData(
+	PaneData pd,
+	SuperList<Integer> winRates,
+	SuperList<Boolean> ppreBase) {
 	var newData = IntStream.range(-winRates.size() + 1, 1)
 	    .mapToObj(i -> this.createDataPoint(i, winRates.next()))
 	    .collect(Collectors.toList());
-	if (chartData.isEmpty())
-	    chartData.setAll(newData);
-	else
-	    Platform.runLater(() -> chartData.setAll(newData));
+	var newPpre = ppreBase.stream()
+	    .map(this::distinguishBkg)
+	    .collect(Collectors.toList());
+	if (pd.data.isEmpty()) {
+	    pd.data.setAll(newData);
+	    pd.ppre.setAll(newPpre);
+	} else
+	    Platform.runLater(() -> {
+		pd.data.setAll(newData);
+		pd.ppre.setAll(newPpre);
+	    });
     }
 
     private Data<Number, Number> createDataPoint(int x, int y) {
 	return new XYChart.Data<Number, Number>(x, y);
+    }
+
+    private Background distinguishBkg(Boolean isWin) {
+	return isWin == null ? GuiParts.bkgWhite : isWin ? GuiParts.bkgRed : GuiParts.bkgBlue;
     }
 
     @Override

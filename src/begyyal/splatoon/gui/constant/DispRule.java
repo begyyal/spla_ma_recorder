@@ -1,4 +1,7 @@
-package begyyal.splatoon.constant;
+package begyyal.splatoon.gui.constant;
+
+import begyyal.splatoon.constant.GameType;
+import begyyal.splatoon.constant.Rule;
 
 public enum DispRule {
     HOKO(GameType.GACHI, Rule.HOKO, "HOKO"),

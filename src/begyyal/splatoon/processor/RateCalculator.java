@@ -10,6 +10,7 @@ import com.google.common.collect.Maps;
 import begyyal.commons.util.object.PairList;
 import begyyal.commons.util.object.SuperList.SuperListGen;
 import begyyal.commons.util.object.SuperMap.SuperMapGen;
+import begyyal.splatoon.constant.FuncConst;
 import begyyal.splatoon.constant.GameType;
 import begyyal.splatoon.constant.Rule;
 import begyyal.splatoon.object.BattleResult;
@@ -17,7 +18,6 @@ import begyyal.splatoon.object.RateRecord;
 
 public class RateCalculator {
 
-    private static final int maInterval = 50;
     private final PairList<BattleResult, RateRecord> records;
 
     public RateCalculator(PairList<BattleResult, RateRecord> records) {
@@ -49,7 +49,7 @@ public class RateCalculator {
 	    if (ratesByRule.containsKey(id))
 		rateRecord.ruleRate = ratesByRule.get(id);
 	    int winRate = (int) this.records
-		.subList(i + 1 - maInterval, i + 1)
+		.subList(i + 1 - FuncConst.maInterval, i + 1)
 		.stream()
 		.filter(r -> r.getLeft().isWin)
 		.count() * 2;
@@ -57,13 +57,8 @@ public class RateCalculator {
 	}
     }
 
-    private int getStartIndexById(int id) {
-	int startIndex = this.records.indexOf(r -> r.getLeft().id >= id);
-	return this.adjustStartIndex(startIndex);
-    }
-
     private int adjustStartIndex(int startIndex) {
-	return startIndex < (maInterval - 1) ? (maInterval - 1) : startIndex;
+	return startIndex < (FuncConst.maInterval - 1) ? (FuncConst.maInterval - 1) : startIndex;
     }
 
     private Map<Integer, Integer> calcRatesByType(GameType type, int ini) {
@@ -80,13 +75,14 @@ public class RateCalculator {
 	    .map(r -> r.getLeft())
 	    .filter(pred)
 	    .collect(SuperListGen.collect());
-	if (filtered.size() < maInterval)
+	if (filtered.size() < FuncConst.maInterval)
 	    return null;
 
 	var rateMap = Maps.<Integer, Integer>newHashMap();
-	for (int i = this.getStartIndexById(startId); i < filtered.size(); i++) {
+	int startIndex = filtered.indexOf(r -> r.id >= startId);
+	for (int i = this.adjustStartIndex(startIndex); i < filtered.size(); i++) {
 	    int winRate = (int) filtered
-		.subList(i + 1 - maInterval, i + 1)
+		.subList(i + 1 - FuncConst.maInterval, i + 1)
 		.stream()
 		.filter(r -> r.isWin)
 		.count() * 2;
