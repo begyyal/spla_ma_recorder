@@ -6,7 +6,7 @@ import begyyal.splatoon.constant.Rule;
 public enum DispRule {
     HOKO(GameType.GACHI, Rule.HOKO, "HOKO"),
     YAGURA(GameType.GACHI, Rule.YAGURA, "YAGURA"),
-    ASARI(GameType.GACHI, Rule.YAGURA, "ASARI"),
+    ASARI(GameType.GACHI, Rule.ASARI, "ASARI"),
     AREA(GameType.GACHI, Rule.AREA, "AREA"),
     NAWABARI(GameType.REGULAR, Rule.NAWABARI, "NAWABARI"),
     GACHI_ALL(GameType.GACHI, null, "ALL");
