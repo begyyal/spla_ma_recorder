@@ -65,6 +65,8 @@ public class SetupResolver {
 
 	this.palette.chart.setTitle("Splatoon2 win rates transition");
 	this.palette.chart.setPrefSize(this.windowWidth, this.windowHeight - 50);
+	this.palette.chart.setAnimated(false);
+	this.palette.chart.setCreateSymbols(false);
     }
 
     public void setupCurrentRate(StringProperty rateProp) {
