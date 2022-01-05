@@ -2,7 +2,6 @@ package begyyal.splatoon.processor;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
@@ -28,6 +27,7 @@ import begyyal.splatoon.gui.constant.GuiParts;
 import begyyal.splatoon.object.BattleResult;
 import begyyal.splatoon.object.DisplayDataBundle;
 import begyyal.splatoon.object.DisplayDataBundle.PaneData;
+import begyyal.splatoon.object.HttpBandle;
 import begyyal.splatoon.object.ResultTable;
 import javafx.application.Platform;
 import javafx.scene.chart.XYChart;
@@ -38,7 +38,7 @@ public class Recorder implements Closeable {
 
     private final int intervalSec;
     private final String sessionId;
-    private final HttpClient client;
+    private final HttpBandle<IkaringApi> httpBandle;
     private final ResultTableDao dao;
     private final ExecutorService exe;
 
@@ -46,7 +46,7 @@ public class Recorder implements Closeable {
 	var res = ResourceBundle.getBundle("common");
 	this.intervalSec = Integer.parseInt(res.getString("pollingIntervalSec"));
 	this.sessionId = res.getString("iksm");
-	this.client = HttpClient.newHttpClient();
+	this.httpBandle = new HttpBandle<IkaringApi>();
 	this.dao = ResultTableDao.newi();
 	this.exe = Executors.newSingleThreadExecutor(
 	    ThreadController.createPlainThreadFactory("spla-po"));
@@ -58,8 +58,8 @@ public class Recorder implements Closeable {
 
     public DisplayDataBundle run() throws Exception {
 
-	var request = this.createReq();
-	var res = client.send(request, BodyHandlers.ofString());
+	this.httpBandle.setReq(IkaringApi.RESULTS, this.createReq());
+	var res = this.httpBandle.send(IkaringApi.RESULTS, BodyHandlers.ofString());
 	var status = HttpStatus.parse(res.statusCode());
 	if (status.getCategory() != 2)
 	    if (status == HttpStatus.Unauthorized) {
@@ -81,8 +81,7 @@ public class Recorder implements Closeable {
     }
 
     private void process(DisplayDataBundle dataBundle) {
-	var request = this.createReq();
-	client.sendAsync(request, BodyHandlers.ofString())
+	this.httpBandle.sendAsync(IkaringApi.RESULTS, BodyHandlers.ofString())
 	    .thenApply(HttpResponse::body)
 	    .thenAccept(j -> this.record(j, dataBundle))
 	    .join();
@@ -189,5 +188,4 @@ public class Recorder implements Closeable {
 	this.exe.shutdown();
 	this.exe.shutdownNow();
     }
-
 }
