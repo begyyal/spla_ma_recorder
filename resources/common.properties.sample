@@ -1,6 +1,6 @@
 iksm=XXXXXXXXXXXXX
 tablePath=C:\\Users\\sample\\splama
 term=100,200,300
-pollingIntervalSec=10
+pollingIntervalSec=30
 windowHeight=700
 windowWidth=1100
