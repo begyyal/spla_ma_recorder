@@ -62,12 +62,12 @@ public class Recorder implements Closeable {
 	var res = this.httpBandle.send(IkaringApi.RESULTS, BodyHandlers.ofString());
 	var status = HttpStatus.parse(res.statusCode());
 	if (status.getCategory() != 2)
-	    if (status == HttpStatus.Unauthorized) {
+	    if (status == HttpStatus.Forbidden) {
 		throw new Exception(
-		    "Http response by the ikaring API shows unauthorized(401) status, "
-			    + "so iksm_session may be wrong.");
+		    "Http response by the ikaring API shows Forbidden(403) status, "
+			    + "so iksm_session may be wrong or expired.");
 	    } else
-		throw new Exception("Http status by the ikaring API is not success.");
+		throw new Exception("Http status by the ikaring API is not success. status:" + status.code);
 
 	var dataBundle = new DisplayDataBundle();
 	this.record(res.body(), dataBundle);
